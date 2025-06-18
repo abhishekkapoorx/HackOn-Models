@@ -5,3 +5,7 @@ __pycache__/
 
 .env
 .env.local
+
+reviews/
+archive/
+PREPROCESSED IMAGES INCEPTION/

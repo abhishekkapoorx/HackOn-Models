@@ -159,9 +159,11 @@ if __name__ == "__main__":
     
     # Example 1: Upload an image with text description
     image_id = ops.upload_image(
-        "public/image1.jpg", 
+        "public/image2.jpg", 
         text_description="A person in a professional setting"
     )
     
     # Example 2: Search for similar images
-    results = ops.search_similar_images("public/image2.jpg", top_k=5) 
+    results = ops.search_similar_images("public/image1.jpg", top_k=5) 
+
+    print(results)
