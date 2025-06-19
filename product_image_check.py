@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from dotenv import load_dotenv
 import logging
+from ultralytics import YOLO
 
 # Load environment variables
 load_dotenv()
@@ -35,43 +36,61 @@ class DetectionResult:
     comparison_details: Dict[str, Any]
 
 class LogoDetector:
-    """Detects and analyzes logos in product images"""
+    """Detects and analyzes logos in product images using YOLO"""
     
-    def __init__(self):
-        self.logo_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        # For logo detection, we'll use a more sophisticated approach
-        self.edge_detector = cv2.createLineSegmentDetector(0)
+    def __init__(self, model_path: str = "m1.pt"):
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model_path = model_path
+        
+        # Load YOLO model using ultralytics
+        try:
+            self.model = YOLO(model_path)
+            logger.info(f"YOLO model loaded successfully from {model_path}")
+        except Exception as e:
+            logger.error(f"Failed to load YOLO model: {e}")
+            self.model = None
         
     def detect_logo_regions(self, image: np.ndarray) -> List[Dict[str, Any]]:
-        """Detect potential logo regions in the image"""
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        """Detect logo regions using YOLO model"""
+        if self.model is None:
+            logger.warning("YOLO model not loaded, returning empty results")
+            return []
         
-        # Multiple detection methods
+        # Convert BGR to RGB for YOLO
+        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        # Run YOLO inference using ultralytics
+        results = self.model(rgb_image, verbose=False)
+        
         logo_regions = []
+        confidence_threshold = 0.55
         
-        # Method 1: Edge detection for logo-like structures
-        edges = cv2.Canny(gray, 50, 150)
-        lines = self.edge_detector.detect(edges)[0]
-        
-        # Method 2: Contour detection
-        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
-        # Method 3: Template matching (simplified)
-        for contour in contours:
-            if cv2.contourArea(contour) > 1000:  # Filter small contours
-                x, y, w, h = cv2.boundingRect(contour)
-                aspect_ratio = w / h
+        # Process YOLO results
+        if len(results) > 0 and len(results[0].boxes) > 0:
+            boxes = results[0].boxes
+            
+            for box in boxes:
+                # Get coordinates
+                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                confidence = box.conf[0].cpu().numpy()
+                class_id = int(box.cls[0].cpu().numpy())
                 
-                # Logo-like characteristics
-                if 0.5 <= aspect_ratio <= 2.0 and w > 50 and h > 50:
-                    logo_regions.append({
-                        'bbox': (x, y, w, h),
-                        'area': cv2.contourArea(contour),
-                        'confidence': 0.7,
-                        'type': 'contour_based'
-                    })
+                if confidence < confidence_threshold:
+                    continue
+                
+                # Convert to integer coordinates
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                w, h = x2 - x1, y2 - y1
+                
+                logo_regions.append({
+                    'bbox': (x1, y1, w, h),
+                    'area': w * h,
+                    'confidence': float(confidence),
+                    'type': 'yolo_detection',
+                    'class_id': class_id
+                })
         
+        logger.info(f"Detected {len(logo_regions)} logo regions using YOLO (confidence > {confidence_threshold})")
         return logo_regions
     
     def analyze_logo_distortion(self, image: np.ndarray, logo_regions: List[Dict[str, Any]]) -> float:
@@ -104,7 +123,7 @@ class LogoDetector:
             distortion_score = (1 - symmetry_score) * 0.4 + (1 - edge_consistency) * 0.3 + (1 - color_consistency) * 0.3
             distortion_scores.append(distortion_score)
         
-        return np.mean(distortion_scores) if distortion_scores else 0.0
+        return float(np.mean(distortion_scores)) if distortion_scores else 0.0
     
     def _calculate_symmetry(self, gray_image: np.ndarray) -> float:
         """Calculate symmetry score of the image"""
@@ -131,7 +150,7 @@ class LogoDetector:
         
         horizontal_symmetry = 1 - np.mean(np.abs(top_half.astype(float) - bottom_half.astype(float))) / 255
         
-        return (vertical_symmetry + horizontal_symmetry) / 2
+        return float((vertical_symmetry + horizontal_symmetry) / 2)
     
     def _analyze_edge_consistency(self, gray_image: np.ndarray) -> float:
         """Analyze edge consistency in the image"""
@@ -151,7 +170,7 @@ class LogoDetector:
         direction_std = np.std(gradient_direction[gradient_magnitude > np.mean(gradient_magnitude)])
         direction_consistency = 1 / (1 + direction_std)
         
-        return (edge_density + direction_consistency) / 2
+        return float((edge_density + direction_consistency) / 2)
     
     def _analyze_color_consistency(self, color_image: np.ndarray) -> float:
         """Analyze color consistency in the image"""
@@ -167,14 +186,15 @@ class LogoDetector:
         color_variance = (np.mean(hsv_std) + np.mean(lab_std)) / 2
         color_consistency = 1 / (1 + color_variance / 50)
         
-        return color_consistency
+        return float(color_consistency)
 
 class ImageComparator:
     """Compares product images with original references"""
     
     def __init__(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(self.device)
+        self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+        self.clip_model = self.clip_model.to(self.device)
         self.clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
         
         # Load a pre-trained model for feature extraction
@@ -204,10 +224,13 @@ class ImageComparator:
             text=None,
             images=pil_image,
             return_tensors="pt"
-        )["pixel_values"].to(self.device)
+        )
+        
+        # Extract pixel_values and move to device
+        pixel_values = torch.tensor(inputs["pixel_values"], dtype=torch.float32).to(self.device)
         
         with torch.no_grad():
-            features = self.clip_model.get_image_features(inputs)
+            features = self.clip_model.get_image_features(pixel_values=pixel_values)
         
         return features.cpu().numpy().flatten()
     
@@ -218,7 +241,7 @@ class ImageComparator:
         features2 = self.extract_features(image2)
         
         # Calculate cosine similarity
-        similarity = cosine_similarity([features1], [features2])[0][0]
+        similarity = cosine_similarity(features1.reshape(1, -1), features2.reshape(1, -1))[0][0]
         
         # Calculate structural similarity
         structural_sim = self._calculate_structural_similarity(image1, image2)
@@ -273,7 +296,7 @@ class ImageComparator:
             if not np.isnan(correlation):
                 correlations.append(correlation)
         
-        return np.mean(correlations) if correlations else 0.0
+        return float(np.mean(correlations)) if correlations else 0.0
     
     def _calculate_texture_similarity(self, img1: np.ndarray, img2: np.ndarray) -> float:
         """Calculate texture similarity using GLCM features"""
@@ -293,13 +316,13 @@ class ImageComparator:
         density_diff = abs(edge_density1 - edge_density2)
         texture_similarity = 1 / (1 + density_diff * 10)
         
-        return texture_similarity
+        return float(texture_similarity)
 
 class ProductCounterfeitDetector:
     """Main class for product counterfeit detection"""
     
-    def __init__(self):
-        self.logo_detector = LogoDetector()
+    def __init__(self, yolo_model_path: str = "m1.pt"):
+        self.logo_detector = LogoDetector(yolo_model_path)
         self.image_comparator = ImageComparator()
         self.thresholds = {
             'logo_distortion': 0.3,  # Higher = more suspicious
@@ -324,8 +347,8 @@ class ProductCounterfeitDetector:
         """
         detected_issues = []
         
-        # Step 1: Logo Analysis
-        logger.info("Analyzing logo distortion...")
+        # Step 1: Logo Analysis using YOLO
+        logger.info("Analyzing logo distortion using YOLO...")
         logo_regions = self.logo_detector.detect_logo_regions(product_image)
         logo_anomaly_score = self.logo_detector.analyze_logo_distortion(product_image, logo_regions)
         
@@ -339,7 +362,7 @@ class ProductCounterfeitDetector:
         if reference_image_url or reference_image is not None:
             logger.info("Comparing with reference image...")
             
-            if reference_image is None:
+            if reference_image is None and reference_image_url:
                 reference_image = self.image_comparator.download_reference_image(reference_image_url)
             
             if reference_image is not None:
@@ -391,12 +414,15 @@ class ProductCounterfeitDetector:
         
         # Original image with logo regions
         axes[0].imshow(rgb_image)
-        axes[0].set_title('Product Image with Logo Detection')
+        axes[0].set_title('Product Image with YOLO Logo Detection')
         
         for region in result.logo_regions:
             x, y, w, h = region['bbox']
+            confidence = region.get('confidence', 0.0)
             rect = patches.Rectangle((x, y), w, h, linewidth=2, edgecolor='red', facecolor='none')
             axes[0].add_patch(rect)
+            axes[0].text(x, y-5, f'Logo: {confidence:.2f}', color='red', fontsize=8, 
+                        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.7))
         
         axes[0].axis('off')
         
@@ -407,11 +433,12 @@ class ProductCounterfeitDetector:
         axes[1].text(0.1, 0.8, f"Confidence: {result.confidence:.3f}", fontsize=12)
         axes[1].text(0.1, 0.7, f"Logo Anomaly: {result.logo_anomaly_score:.3f}", fontsize=12)
         axes[1].text(0.1, 0.6, f"Image Similarity: {result.image_similarity_score:.3f}", fontsize=12)
+        axes[1].text(0.1, 0.5, f"Logos Detected: {len(result.logo_regions)}", fontsize=12)
         
         if result.detected_issues:
-            axes[1].text(0.1, 0.5, "Issues Detected:", fontsize=12, fontweight='bold')
+            axes[1].text(0.1, 0.4, "Issues Detected:", fontsize=12, fontweight='bold')
             for i, issue in enumerate(result.detected_issues):
-                axes[1].text(0.1, 0.4 - i*0.05, f"• {issue}", fontsize=10, color='red')
+                axes[1].text(0.1, 0.35 - i*0.05, f"• {issue}", fontsize=10, color='red')
         
         axes[1].axis('off')
         
@@ -456,7 +483,7 @@ def load_image(image_path: str) -> Optional[np.ndarray]:
 def save_result_summary(results: List[DetectionResult], output_path: str):
     """Save detection results summary to file"""
     with open(output_path, 'w') as f:
-        f.write("Product Counterfeit Detection Results\n")
+        f.write("Product Counterfeit Detection Results (YOLO-based)\n")
         f.write("=" * 50 + "\n\n")
         
         for i, result in enumerate(results):
@@ -465,6 +492,12 @@ def save_result_summary(results: List[DetectionResult], output_path: str):
             f.write(f"  Confidence: {result.confidence:.3f}\n")
             f.write(f"  Logo Anomaly Score: {result.logo_anomaly_score:.3f}\n")
             f.write(f"  Image Similarity Score: {result.image_similarity_score:.3f}\n")
+            f.write(f"  Logos Detected: {len(result.logo_regions)}\n")
+            
+            if result.logo_regions:
+                f.write("  Logo Details:\n")
+                for j, logo in enumerate(result.logo_regions):
+                    f.write(f"    Logo {j+1}: bbox={logo['bbox']}, confidence={logo['confidence']:.3f}\n")
             
             if result.detected_issues:
                 f.write("  Issues:\n")
@@ -475,12 +508,12 @@ def save_result_summary(results: List[DetectionResult], output_path: str):
 
 # Example usage
 if __name__ == "__main__":
-    # Initialize detector
-    detector = ProductCounterfeitDetector()
+    # Initialize detector with YOLO model
+    detector = ProductCounterfeitDetector("m1.pt")
     
     # Example 1: Single image detection
-    image_path = "public/image1.jpg"
-    reference_url = "https://example.com/original_product.jpg"
+    image_path = "./archive/selected_for_segmentation/2607.jpg"
+    reference_url = "https://th.bing.com/th/id/OIP.hlS2sncgJNmpza2QcRwJ8QHaLH?w=204&h=306&c=7&r=0&o=7&dpr=1.1&pid=1.7&rm=3"
     
     if os.path.exists(image_path):
         image = load_image(image_path)
@@ -491,6 +524,12 @@ if __name__ == "__main__":
             print(f"Confidence: {result.confidence:.3f}")
             print(f"Logo Anomaly Score: {result.logo_anomaly_score:.3f}")
             print(f"Image Similarity Score: {result.image_similarity_score:.3f}")
+            print(f"Logos Detected: {len(result.logo_regions)}")
+            
+            if result.logo_regions:
+                print("Logo Details:")
+                for i, logo in enumerate(result.logo_regions):
+                    print(f"  Logo {i+1}: bbox={logo['bbox']}, confidence={logo['confidence']:.3f}")
             
             if result.detected_issues:
                 print("Issues Detected:")
@@ -501,8 +540,8 @@ if __name__ == "__main__":
             detector.visualize_results(image, result, "detection_result.png")
     
     # Example 2: Batch detection
-    image_paths = ["public/image1.jpg", "public/image2.jpg"]
-    reference_urls = ["https://example.com/original1.jpg", "https://example.com/original2.jpg"]
+    image_paths = ["./archive/selected_for_segmentation/2607.jpg", "./archive/selected_for_segmentation/2605.jpg"]
+    reference_urls = ["https://th.bing.com/th/id/OIP.hlS2sncgJNmpza2QcRwJ8QHaLH?w=204&h=306&c=7&r=0&o=7&dpr=1.1&pid=1.7&rm=3"]
     
     batch_results = detector.batch_detect(image_paths, reference_urls)
     save_result_summary(batch_results, "batch_detection_results.txt")
