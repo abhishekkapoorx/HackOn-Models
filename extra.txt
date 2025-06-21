@@ -1,0 +1,37 @@
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 207567796032.dkr.ecr.ap-south-1.amazonaws.com
+
+docker push 207567796032.dkr.ecr.ap-south-1.amazonaws.com/fastapi-backend:latest
+
+
+aws ec2 create-security-group --group-name fastapi-sg --description "Allow HTTP inbound" --vpc-id vpc-0731e6247a935f76e
+
+{
+    "GroupId": "sg-04bb81c2b76bd4652",
+    "SecurityGroupArn": "arn:aws:ec2:ap-south-1:207567796032:security-group/sg-04bb81c2b76bd4652"
+}
+
+aws ec2 authorize-security-group-ingress  --group-id sg-04bb81c2b76bd4652 --protocol tcp --port 80 --cidr 0.0.0.0/0
+
+
+aws ec2 create-subnet --vpc-id vpc-0731e6247a935f76e --cidr-block 10.0.1.0/24 --availability-zone ap-south-1 --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=fastapi-public-subnet}]'
+
+
+aws ecs create-service --cluster fastapi-cluster --service-name fastapi-service --task-definition fastapi-task --desired-count 1 --launch-type FARGATE --network-configuration "{
+    'awsvpcConfiguration': {
+      'subnets': ['subnet-0710e8ed0a9dac901'],
+      'securityGroups': ['sg-04bb81c2b76bd4652'],
+      'assignPublicIp': 'ENABLED'
+    }
+  }"
+
+
+aws ecs create-service --cluster fastapi-cluster --service-name fastapi-service --task-definition fastapi-task --desired-count 1 --launch-type FARGATE --network-configuration {
+    "awsvpcConfiguration": {
+      "subnets": ["subnet-0710e8ed0a9dac901"],
+      "securityGroups": ["sg-04bb81c2b76bd4652"],
+      "assignPublicIp": "ENABLED"
+    }
+  }
+
+
+aws ecs create-service --cluster fastapi-cluster --service-name fastapi-service --task-definition fastapi-task --desired-count 1 --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[subnet-0710e8ed0a9dac901],securityGroups=[sg-04bb81c2b76bd4652],assignPublicIp=ENABLED}'
