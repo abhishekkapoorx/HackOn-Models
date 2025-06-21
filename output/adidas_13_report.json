@@ -3,28 +3,78 @@
     "is_counterfeit": true,
     "confidence": 0.8,
     "brand_detected": "adidas",
-    "timestamp": "2025-06-19 16:21:13"
+    "timestamp": "2025-06-20 14:27:18"
   },
   "logo_analysis": {
     "input_logos_count": 0,
     "input_logos": [],
-    "logo_similarities": [],
-    "distortion_scores": []
-  },
-  "reference_analysis": {
-    "reference_images_found": 4,
-    "successful_downloads": 2,
-    "reference_urls": [
-      "https://tse1.mm.bing.net/th?q=Adidas+Originals+Logo.png",
-      "https://pngimg.com/download/23660&quot;,&quot;murl&quot;:&quot;https://pngimg.com/uploads/adidas/adidas_PNG17.png",
-      "https://runblogger.com/2011/12/adidas-adizero-hagio-running-shoe.html&quot;,&quot;murl&quot;:&quot;https://runblogger.com/images/2011/12/adidas-adizero-hagio-running-shoe-review-a-roomy-road-flat-built-for-speed.jpg",
-      "https://tse1.mm.bing.net/th?q=Adidas+Logo.jpg"
+    "logo_similarities": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "distortion_scores": [
+      0.0,
+      0.0,
+      0.0
     ]
   },
-  "detected_issues": [],
+  "reference_analysis": {
+    "reference_images_found": 5,
+    "successful_downloads": 4,
+    "reference_urls": [
+      "https://holostik.com/wp-content/uploads/2018/09/adidas-shoe-shining-292x300.jpg",
+      "https://i.ebayimg.com/images/g/GG0AAOSwoO5nmkxe/s-l400.jpg",
+      "https://holostik.com/wp-content/uploads/2018/09/adidas-shoes-box-292x300.jpg",
+      "https://shopmerchgame.com/wp-content/uploads/2025/05/Official-FC-Bayern-Munchen-Deutsche-Meisterinnen-2025-Adidas-Logo-Champions-Commemorative-Merchandise-Unisex-T-Shirt-300x300.jpg",
+      "https://mma.prnewswire.com/media/2563593/Adidas_Arena_and_Altec_Lansing.jpg"
+    ]
+  },
+  "detected_issues": [
+    "Low logo similarity with reference (score: 0.000)",
+    "Low logo similarity with reference (score: 0.000)",
+    "Low logo similarity with reference (score: 0.000)"
+  ],
   "analysis_details": {
-    "comparison_results": [],
-    "num_reference_images": 2,
+    "comparison_results": [
+      {
+        "max_similarity": 0.0,
+        "avg_similarity": 0.0,
+        "similarity_scores": [],
+        "best_matches": [],
+        "distortion_analysis": {
+          "distortion_issues": [],
+          "avg_input_distortion": 0.0,
+          "avg_reference_distortion": 0.0,
+          "distortion_difference": 0.0
+        }
+      },
+      {
+        "max_similarity": 0.0,
+        "avg_similarity": 0.0,
+        "similarity_scores": [],
+        "best_matches": [],
+        "distortion_analysis": {
+          "distortion_issues": [],
+          "avg_input_distortion": 0.0,
+          "avg_reference_distortion": 0.0,
+          "distortion_difference": 0.0
+        }
+      },
+      {
+        "max_similarity": 0.0,
+        "avg_similarity": 0.0,
+        "similarity_scores": [],
+        "best_matches": [],
+        "distortion_analysis": {
+          "distortion_issues": [],
+          "avg_input_distortion": 0.0,
+          "avg_reference_distortion": 0.0,
+          "distortion_difference": 0.0
+        }
+      }
+    ],
+    "num_reference_images": 4,
     "avg_logo_similarity": 0.0,
     "avg_distortion_score": 0.0
   }

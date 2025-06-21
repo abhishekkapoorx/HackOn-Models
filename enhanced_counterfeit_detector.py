@@ -51,7 +51,7 @@ class BrandImageInfo:
     """Information about brand reference image"""
     url: str
     image: Optional[np.ndarray] = None
-    logos: List[LogoInfo] = None
+    logos: Optional[List[LogoInfo]] = None
     similarity_score: float = 0.0
     download_success: bool = False
 
@@ -76,7 +76,7 @@ class BrandDetector:
         try:
             self.processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
             self.model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
-            self.model.to(self.device)
+            self.model = self.model.to(self.device)
             logger.info("Brand detection model loaded successfully")
         except Exception as e:
             logger.error(f"Failed to load brand detection model: {e}")
@@ -138,29 +138,53 @@ class BrandDetector:
         return "unknown"
 
 class WebImageSearcher:
-    """Searches web for brand reference images"""
+    """Searches web for brand reference images using Google Custom Search"""
     
     def __init__(self):
-        self.session = None
         self.max_images = 5
         self.timeout = 10
+        self.api_key = os.getenv('GAPIS_API_KEY')
+        self.search_engine_id = os.getenv('GCSE_ID')
+        
+        if not self.api_key or not self.search_engine_id:
+            logger.warning("Google Custom Search API key or Search Engine ID not found in environment variables")
     
-    async def search_brand_images(self, brand: str, product_type: str = "product") -> List[str]:
+    async def search_brand_images(self, brand: str, product_type: str = "product", description: str = "") -> List[str]:
         """Search for brand images on the web"""
         if brand == "unknown":
             return []
         
-        search_queries = [
+        if not self.api_key or not self.search_engine_id:
+            logger.error("Google Custom Search API credentials not configured")
+            return []
+        
+        # Extract keywords from description for better search
+        desc_keywords = self._extract_keywords_from_description(description)
+        
+        # Build search queries incorporating description
+        search_queries = []
+        
+        if desc_keywords:
+            # Primary queries with description keywords
+            search_queries.extend([
+                f"{brand} {desc_keywords} original authentic",
+                f"{brand} {desc_keywords} official",
+                f"authentic {brand} {desc_keywords}",
+                f"original {brand} {desc_keywords} {product_type}"
+            ])
+        
+        # Fallback queries without description
+        search_queries.extend([
             f"{brand} {product_type} original authentic",
             f"{brand} logo official",
             f"{brand} authentic {product_type}",
             f"original {brand} {product_type}"
-        ]
+        ])
         
         all_urls = []
         
         for query in search_queries:
-            urls = await self._search_bing_images(query)
+            urls = await self._search_google_images(query)
             all_urls.extend(urls)
             if len(all_urls) >= self.max_images:
                 break
@@ -171,44 +195,103 @@ class WebImageSearcher:
         logger.info(f"Found {len(unique_urls)} reference images for brand: {brand}")
         return unique_urls
     
-    async def _search_bing_images(self, query: str) -> List[str]:
-        """Search Bing for images"""
+    async def _search_google_images(self, query: str) -> List[str]:
+        """Search Google Custom Search for images"""
         try:
-            # Using a simple image search approach
-            # In production, you would use proper APIs like Bing Image Search API
-            search_url = f"https://www.bing.com/images/search?q={quote_plus(query)}&form=HDRSC2"
+            search_url = "https://www.googleapis.com/customsearch/v1"
+            params = {
+                'key': self.api_key,
+                'cx': self.search_engine_id,
+                'q': query,
+                'searchType': 'image',
+                'num': 7,
+                'imgType': 'photo',
+                'safe': 'active'
+            }
             
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self.timeout)) as session:
-                async with session.get(search_url) as response:
+                async with session.get(search_url, params=params) as response:
                     if response.status == 200:
-                        html = await response.text()
-                        # Extract image URLs from HTML (simplified)
-                        urls = self._extract_image_urls_from_html(html)
-                        return urls[:3]  # Limit per query
+                        data = await response.json()
+                        urls = self._extract_image_urls_from_response(data)
+                        return urls
+                    else:
+                        logger.error(f"Google Custom Search API returned status {response.status}")
+                        
         except Exception as e:
-            logger.error(f"Error searching images: {e}")
+            logger.error(f"Error searching Google images: {e}")
         
         return []
     
-    def _extract_image_urls_from_html(self, html: str) -> List[str]:
-        """Extract image URLs from search results HTML"""
-        # This is a simplified extraction - in production use proper APIs
-        import re
+    def _extract_image_urls_from_response(self, response_data: dict) -> List[str]:
+        """Extract image URLs from Google Custom Search API response"""
+        urls = []
         
-        # Look for image URLs in the HTML
-        pattern = r'https?://[^\s"\'<>]+\.(?:jpg|jpeg|png|gif|webp)'
-        urls = re.findall(pattern, html, re.IGNORECASE)
+        if 'items' in response_data:
+            for item in response_data['items']:
+                if 'link' in item:
+                    image_url = item['link']
+                    
+                    # Basic validation
+                    if self._is_valid_image_url(image_url):
+                        urls.append(image_url)
         
-        # Filter out likely non-product images
-        filtered_urls = []
-        for url in urls:
-            if any(domain in url for domain in ['bing.com', 'microsoft.com', 'msn.com']):
-                continue
-            if len(url) > 500:  # Skip very long URLs
-                continue
-            filtered_urls.append(url)
+        return urls
+    
+    def _is_valid_image_url(self, url: str) -> bool:
+        """Validate if URL is likely a valid image"""
+        # Check if URL ends with image extension
+        if not re.search(r'\.(jpg|jpeg|png|gif|webp)(\?.*)?$', url, re.IGNORECASE):
+            return False
         
-        return filtered_urls[:5]
+        # Skip very long URLs
+        if len(url) > 500:
+            return False
+        
+        # Skip certain domains that might not have useful images
+        blocked_domains = ['googleapis.com', 'google.com', 'gstatic.com']
+        if any(domain in url for domain in blocked_domains):
+            return False
+        
+        return True
+    
+    def _extract_keywords_from_description(self, description: str) -> str:
+        """Extract relevant keywords from product description"""
+        if not description:
+            return ""
+        
+        # Common product-related keywords to keep
+        relevant_keywords = []
+        
+        # Color keywords
+        colors = ['red', 'blue', 'green', 'yellow', 'black', 'white', 'gray', 'grey', 'brown', 
+                 'pink', 'purple', 'orange', 'navy', 'beige', 'tan', 'maroon', 'gold', 'silver']
+        
+        # Product type keywords
+        product_types = ['shoe', 'shoes', 'sneaker', 'sneakers', 'boot', 'boots', 'sandal', 'sandals',
+                        'shirt', 't-shirt', 'tshirt', 'polo', 'hoodie', 'jacket', 'coat', 'pants',
+                        'jeans', 'shorts', 'dress', 'skirt', 'bag', 'purse', 'backpack', 'wallet',
+                        'watch', 'sunglasses', 'hat', 'cap', 'belt', 'scarf', 'gloves']
+        
+        # Material keywords
+        materials = ['leather', 'canvas', 'denim', 'cotton', 'wool', 'silk', 'polyester', 'nylon']
+        
+        # Style keywords
+        styles = ['casual', 'formal', 'sport', 'athletic', 'running', 'basketball', 'tennis',
+                 'vintage', 'classic', 'modern', 'retro', 'slim', 'regular', 'loose']
+        
+        all_keywords = colors + product_types + materials + styles
+        
+        # Extract keywords from description
+        description_lower = description.lower()
+        words = re.findall(r'\b\w+\b', description_lower)
+        
+        for word in words:
+            if word in all_keywords and word not in relevant_keywords:
+                relevant_keywords.append(word)
+        
+        # Limit to most relevant keywords (max 3)
+        return ' '.join(relevant_keywords[:3])
     
     def download_images(self, urls: List[str]) -> List[BrandImageInfo]:
         """Download reference images"""
@@ -259,7 +342,7 @@ class EnhancedLogoDetector:
         try:
             self.clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
             self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-            self.clip_model.to(self.device)
+            self.clip_model = self.clip_model.to(self.device)
             logger.info("CLIP model loaded for logo feature extraction")
         except Exception as e:
             logger.error(f"Failed to load CLIP model: {e}")
@@ -412,7 +495,12 @@ class LogoComparator:
                 'avg_similarity': 0.0,
                 'similarity_scores': [],
                 'best_matches': [],
-                'distortion_analysis': {}
+                'distortion_analysis': {
+                    'distortion_issues': [],
+                    'avg_input_distortion': 0.0,
+                    'avg_reference_distortion': 0.0,
+                    'distortion_difference': 0.0
+                }
             }
         
         similarity_matrix = []
@@ -563,7 +651,7 @@ class EnhancedCounterfeitDetector:
         logger.info(f"Detected {len(input_logos)} logos in input image")
         
         # Step 3: Search for reference images
-        reference_urls = await self.web_searcher.search_brand_images(brand, "product")
+        reference_urls = await self.web_searcher.search_brand_images(brand, "product", product_description)
         reference_images = self.web_searcher.download_images(reference_urls)
         
         # Step 4: Detect logos in reference images
@@ -590,11 +678,13 @@ class EnhancedCounterfeitDetector:
                     detected_issues.append(f"Low logo similarity with reference (score: {comparison['max_similarity']:.3f})")
                 
                 # Distortion analysis
-                distortion_analysis = comparison['distortion_analysis']
-                distortion_scores.append(distortion_analysis['avg_input_distortion'])
+                distortion_analysis = comparison.get('distortion_analysis', {})
+                avg_input_distortion = distortion_analysis.get('avg_input_distortion', 0.0)
+                distortion_scores.append(avg_input_distortion)
                 
-                if distortion_analysis['distortion_issues']:
-                    detected_issues.extend(distortion_analysis['distortion_issues'])
+                distortion_issues = distortion_analysis.get('distortion_issues', [])
+                if distortion_issues:
+                    detected_issues.extend(distortion_issues)
         
         # Step 6: Overall analysis
         is_counterfeit, confidence = self._determine_counterfeit_status(
@@ -831,8 +921,8 @@ async def analyze_product_image(image_path: str, description: str = "", output_d
 if __name__ == "__main__":
     async def main():
         # Example analysis
-        image_path = "./data/logo_real_fake/train/adidas_fake/adidas_13.jpg"
-        description = "adidas"
+        image_path = "./data/fashionFullData/fashion-dataset/images/1533.jpg"
+        description = "PUMA t-shirt"
         
         result = await analyze_product_image(image_path, description)
         
