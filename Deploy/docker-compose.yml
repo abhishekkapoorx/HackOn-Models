@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  fastapi-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GAPIS_API_KEY=${GAPIS_API_KEY}
+      - GCSE_ID=${GCSE_ID}
+    volumes:
+      # Mount model directory for development
+      - ../my_model:/app/models:ro
+      # Mount output directory for saving results
+      - ./output:/app/output
+      # Mount temp directory for temporary files
+      - ./temp:/app/temp
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s 
