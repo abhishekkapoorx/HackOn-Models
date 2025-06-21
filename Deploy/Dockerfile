@@ -1,5 +1,5 @@
 # Use Python 3.11 slim image as base
-FROM python:3.11-slim
+FROM python:3.12
 
 # Set working directory
 WORKDIR /app
@@ -11,38 +11,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    cmake \
-    make \
-    git \
-    wget \
-    curl \
-    unzip \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    libgomp1 \
-    libglib2.0-0 \
-    libgtk-3-0 \
-    libavcodec-dev \
-    libavformat-dev \
-    libswscale-dev \
-    libv4l-dev \
-    libxvidcore-dev \
-    libx264-dev \
-    libjpeg-dev \
-    libpng-dev \
-    libtiff-dev \
-    libatlas-base-dev \
-    python3-dev \
-    && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip
-RUN pip install --upgrade pip
+RUN apt-get update && apt-get install -y libgl1
+
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -59,7 +30,7 @@ COPY enhanced_counterfeit_detector.py .
 
 # Copy the model files (if they exist locally)
 # Note: In production, these should be downloaded from a model registry or S3
-# COPY ../my_model/ ./models/
+COPY ./models/ ./models/
 
 # Create a startup script
 RUN echo '#!/bin/bash\n\
@@ -75,11 +46,13 @@ exec uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-ali
 ' > /app/start.sh && chmod +x /app/start.sh
 
 # Expose port (will be overridden by AWS)
-EXPOSE 8000
+EXPOSE 80
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:$PORT/health || exit 1
+# HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
+#     CMD curl -f http://localhost:$PORT/health || exit 1
 
 # Use startup script
-CMD ["/app/start.sh"] 
+# CMD ["/app/start.sh"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
+

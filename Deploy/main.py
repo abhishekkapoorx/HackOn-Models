@@ -120,7 +120,7 @@ async def startup_event():
     
     try:
         # Initialize counterfeit detector
-        counterfeit_detector = EnhancedCounterfeitDetector("../my_model/my_model.pt")
+        counterfeit_detector = EnhancedCounterfeitDetector("./models/my_model.pt")
         logger.info("Counterfeit detector initialized")
         
         # Initialize fake review detection model
