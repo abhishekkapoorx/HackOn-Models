@@ -6,7 +6,7 @@ Test script for enhanced counterfeit detection system
 import asyncio
 import os
 import sys
-from enhanced_counterfeit_detector import (
+from enhanced_counterfeit_detector_1 import (
     EnhancedCounterfeitDetector, 
     analyze_product_image,
     load_image
@@ -108,7 +108,7 @@ async def test_individual_components():
     # Test YOLO model loading
     print("\n🔧 Testing YOLO Model...")
     try:
-        from enhanced_counterfeit_detector import EnhancedLogoDetector
+        from enhanced_counterfeit_detector_1 import EnhancedLogoDetector
         detector = EnhancedLogoDetector("m1.pt")
         if detector.model is not None:
             print("✅ YOLO model loaded successfully")
@@ -120,7 +120,7 @@ async def test_individual_components():
     # Test brand detection
     print("\n🔧 Testing Brand Detection...")
     try:
-        from enhanced_counterfeit_detector import BrandDetector
+        from enhanced_counterfeit_detector_1 import BrandDetector
         brand_detector = BrandDetector()
         if brand_detector.model is not None:
             print("✅ Brand detection model loaded successfully")
@@ -132,7 +132,7 @@ async def test_individual_components():
     # Test web search
     print("\n🔧 Testing Web Search...")
     try:
-        from enhanced_counterfeit_detector import WebImageSearcher
+        from enhanced_counterfeit_detector_1 import WebImageSearcher
         searcher = WebImageSearcher()
         
         # Test search for a known brand
@@ -159,7 +159,7 @@ async def test_logo_comparison():
         return
     
     try:
-        from enhanced_counterfeit_detector import EnhancedLogoDetector, LogoComparator
+        from enhanced_counterfeit_detector_1 import EnhancedLogoDetector, LogoComparator
         
         # Load image
         image = load_image(test_image)

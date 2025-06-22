@@ -1,0 +1,109 @@
+{
+  "summary": {
+    "total_sellers": 5,
+    "average_aura_score": 0.768,
+    "median_aura_score": 0.92,
+    "highest_score": 1.0,
+    "lowest_score": 0.359,
+    "report_generated": "2025-06-22T17:27:35.234906"
+  },
+  "risk_distribution": {
+    "high_risk": 2,
+    "low_risk": 3
+  },
+  "top_performers": [
+    {
+      "seller_id": "SELL#QNTM1ELEC",
+      "seller_name": "Quantum Electronics",
+      "aura_score": 1.0,
+      "product_count": 2,
+      "risk_category": "low_risk"
+    },
+    {
+      "seller_id": "SELL#VRDNT2LIFE",
+      "seller_name": "Verdant Living Co.",
+      "aura_score": 1.0,
+      "product_count": 2,
+      "risk_category": "low_risk"
+    },
+    {
+      "seller_id": "SELL#APEX3GEAR",
+      "seller_name": "Apex Outfitters",
+      "aura_score": 0.92,
+      "product_count": 2,
+      "risk_category": "low_risk"
+    },
+    {
+      "seller_id": "SELL#STYLE5SPRINT",
+      "seller_name": "StyleSprint Fashions",
+      "aura_score": 0.56,
+      "product_count": 2,
+      "risk_category": "high_risk"
+    },
+    {
+      "seller_id": "SELL#GLITZ4GADGET",
+      "seller_name": "GadgetGlitz",
+      "aura_score": 0.359,
+      "product_count": 2,
+      "risk_category": "high_risk"
+    }
+  ],
+  "bottom_performers": [],
+  "detailed_scores": [
+    {
+      "seller_id": "SELL#QNTM1ELEC",
+      "seller_name": "Quantum Electronics",
+      "overall_aura_score": 1.0,
+      "product_count": 2,
+      "avg_authenticity": 0.99,
+      "avg_quality": 0.97,
+      "avg_similarity": 0.925,
+      "consistency_bonus": 0.093,
+      "risk_category": "low_risk"
+    },
+    {
+      "seller_id": "SELL#VRDNT2LIFE",
+      "seller_name": "Verdant Living Co.",
+      "overall_aura_score": 1.0,
+      "product_count": 2,
+      "avg_authenticity": 0.99,
+      "avg_quality": 0.975,
+      "avg_similarity": 0.955,
+      "consistency_bonus": 0.096,
+      "risk_category": "low_risk"
+    },
+    {
+      "seller_id": "SELL#APEX3GEAR",
+      "seller_name": "Apex Outfitters",
+      "overall_aura_score": 0.92,
+      "product_count": 2,
+      "avg_authenticity": 0.92,
+      "avg_quality": 0.89,
+      "avg_similarity": 0.865,
+      "consistency_bonus": 0.079,
+      "risk_category": "low_risk"
+    },
+    {
+      "seller_id": "SELL#STYLE5SPRINT",
+      "seller_name": "StyleSprint Fashions",
+      "overall_aura_score": 0.56,
+      "product_count": 2,
+      "avg_authenticity": 0.525,
+      "avg_quality": 0.525,
+      "avg_similarity": 0.675,
+      "consistency_bonus": 0.029,
+      "risk_category": "high_risk"
+    },
+    {
+      "seller_id": "SELL#GLITZ4GADGET",
+      "seller_name": "GadgetGlitz",
+      "overall_aura_score": 0.359,
+      "product_count": 2,
+      "avg_authenticity": 0.35,
+      "avg_quality": 0.3,
+      "avg_similarity": 0.375,
+      "consistency_bonus": 0.029,
+      "risk_category": "high_risk"
+    }
+  ]
+}

@@ -18,7 +18,7 @@ import cv2
 
 # Import our modules
 from simple_image_ops import SimpleImageOps
-from enhanced_counterfeit_detector import EnhancedCounterfeitDetector, load_image
+from enhanced_counterfeit_detector_1 import EnhancedCounterfeitDetector, load_image
 import asyncio
 import logging
 

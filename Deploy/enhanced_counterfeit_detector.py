@@ -330,7 +330,7 @@ class EnhancedLogoDetector:
     def __init__(self, model_path: str = "./models/my_model.pt"):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model_path = model_path
-        self.confidence_threshold = 0.55
+        self.confidence_threshold = 0.50
         
         # Load YOLO model
         try:
@@ -486,8 +486,8 @@ class LogoComparator:
     """Compares logos between input and reference images"""
     
     def __init__(self):
-        self.similarity_threshold = 0.7
-        self.distortion_threshold = 0.3
+        self.similarity_threshold = 0.5
+        self.distortion_threshold = 0.5
     
     def compare_logos(self, input_logos: List[LogoInfo], reference_logos: List[LogoInfo]) -> Dict[str, Any]:
         """Compare logos between input and reference images"""
@@ -632,9 +632,9 @@ class EnhancedCounterfeitDetector:
         
         # Detection thresholds
         self.thresholds = {
-            'logo_similarity': 0.7,
-            'distortion_score': 0.3,
-            'overall_confidence': 0.6
+            'logo_similarity': 0.5,
+            'distortion_score': 0.5,
+            'overall_confidence': 0.5
         }
     
     async def analyze_counterfeit(self, image: np.ndarray, product_description: str = "") -> CounterfeitAnalysisResult:
