@@ -627,9 +627,9 @@ class EnhancedCounterfeitDetector:
         
         # Detection thresholds
         self.thresholds = {
-            'logo_similarity': 0.7,
+            'logo_similarity': 0.5,
             'distortion_score': 0.3,
-            'overall_confidence': 0.6
+            'overall_confidence': 0.5
         }
     
     async def analyze_counterfeit(self, image: np.ndarray, product_description: str = "") -> CounterfeitAnalysisResult:
