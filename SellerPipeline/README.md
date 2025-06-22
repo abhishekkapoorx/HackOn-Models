@@ -73,52 +73,6 @@ seller_scores = calculator.calculate_all_seller_aura_scores()
 report = calculator.generate_seller_aura_report(seller_scores)
 ```
 
-## Database Schema
-
-### Required DynamoDB Tables
-
-1. **Sellers Table**
-   - Primary Key: `seller_id` (String)
-   - Attributes: `seller_name`, `seller_type`
-
-2. **Products Table**
-   - Primary Key: `product_id` (String)
-   - GSI: `seller_id-index`
-   - Attributes: `seller_id`, `product_name`, `category`
-
-3. **ProductAnalysis Table**
-   - Primary Key: `product_id` (String)
-   - Attributes: `overall_scores`, `review_analysis`, `fake_review_analysis`
-
-4. **SellerScores Table**
-   - Primary Key: `seller_id` (String)
-   - Attributes: All calculated scores and metrics
-
-### Sample Data Structure
-
-**Product Analysis Example**:
-```json
-{
-  "product_id": "PROD_001",
-  "overall_scores": {
-    "authenticity_score": 0.95,
-    "similarity_score": 0.90,
-    "quality_score": 0.88,
-    "brand_confidence": 1.0
-  },
-  "review_analysis": {
-    "sentiment_distribution": {
-      "Positive": 80,
-      "Negative": 10,
-      "Neutral": 10
-    }
-  },
-  "fake_review_analysis": {
-    "fake_review_percentage": 5.0
-  }
-}
-```
-
 ## Scoring Algorithm
 
 ### Product Aura Score
