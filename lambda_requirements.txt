@@ -1,5 +1,5 @@
 torch==2.0.1
-transformers==4.35.0
+transformers==4.53.0
 boto3==1.29.0
 numpy==1.24.3
 tokenizers==0.14.1 
